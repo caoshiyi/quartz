@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
                 std::to_string(nqubits) + "q/" + circuit_file +
                 "_indep_qiskit_" + std::to_string(nqubits) + ".qasm");
   sim::qcircuit::Circuit<double> circuit(nqubits, nlocal);
-  circuit.compile(seq.get(), &ctx, &interpreter, use_ilp);
+  // circuit.compile(seq.get(), &ctx, &interpreter, use_ilp);
   circuit.simulate(ndevice, true);
 
   MPICHECK(MPI_Finalize());

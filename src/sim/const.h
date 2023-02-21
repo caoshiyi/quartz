@@ -3,6 +3,7 @@
 
 #include "mpi.h"
 #include "nccl.h"
+#include "helper.h" // HANDLE_ERROR, HANDLE_CUDA_ERROR
 #include <cuComplex.h>        // cuDoubleComplex
 #include <cuda_runtime_api.h> // cudaMalloc, cudaMemcpy, etc.
 #include <custatevec.h>       // custatevecApplyMatrix

@@ -97,11 +97,12 @@ bool SimulatorCuQuantum<DT>::ApplyKernelGates(std::vector<KernelGate> &kernelgat
   unsigned blockHot, enumerate;
   qindex relatedQubits = 0;
   for (int i = 0; i < n_local; i++) {
-    if (logicQubitset >> i & 1)
+    if (logicQubitset >> i & 1){
         auto it = find(permutation.begin(), permutation.end(), i);
         assert(it != permutation.end());
         int idx = it - permutation.begin();
         relatedQubits |= qindex(1) << idx;
+    }
   }
   enumerate = relatedQubits;
   blockHot = (qindex(1) << n_local) - 1 - enumerate;
@@ -120,13 +121,15 @@ bool SimulatorCuQuantum<DT>::ApplyKernelGates(std::vector<KernelGate> &kernelgat
       HANDLE_CUDA_ERROR(cudaMemcpyAsync(threadBias[i], hostThreadBias, sizeof(hostThreadBias), cudaMemcpyHostToDevice, s[i]));
   }
 
-  qindex gridDim = (qindex(1) <<n_local) >> SHARED_MEM_SIZE;
-  for (int i = 0; i < n_devices; i++) {
-      HANDLE_CUDA_ERROR(cudaSetDevice(devices[i]));
+  qindex gridDim = (qindex(1) << n_local) >> SHARED_MEM_SIZE;
+  for (int k = 0; k < n_devices; k++) {
+      HANDLE_CUDA_ERROR(cudaSetDevice(devices[k]));
       // currently all the GPU executes same set of gates; TODO: per-gpu schedule
-      copyGatesToSymbol(kernelgates.data(), kernelgates.size(), s[i], 0);
-      ApplyGatesSHM(gridDim, deviceStateVec[i], threadBias[i], n_local, kernelgates.size(), blockHot, enumerate, s[i], i);
+      copyGatesToSymbol(kernelgates.data(), kernelgates.size(), s[k], 0);
+      ApplyGatesSHM(gridDim, (qComplex*)d_sv[k], threadBias[k], n_local, kernelgates.size(), blockHot, enumerate, s[k], k);
   }
+
+  return true;
 
 }
 

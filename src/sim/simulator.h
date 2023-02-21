@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "helper.h" // HANDLE_ERROR, HANDLE_CUDA_ERROR
 #include "simgate.h"
 
 #define MAX_DEVICES 4
@@ -49,7 +48,6 @@ static __inline__ int ncclTypeSize(ncclDataType_t type) {
   case ncclInt64:
   case ncclUint64:
   case ncclFloat64:
-  case ncclDouble:
     return 8;
   default:
     return -1;

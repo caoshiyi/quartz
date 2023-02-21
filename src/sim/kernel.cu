@@ -148,10 +148,10 @@ __device__ __forceinline__ void GCC(int idx, qComplex p) {
 }
 
 #define FOLLOW_NEXT(TYPE) \
-case GateType::TYPE: // no break
+case KernelGateType::TYPE: // no break
 
 #define CASE_CONTROL(TYPE, OP) \
-case GateType::TYPE: { \
+case KernelGateType::TYPE: { \
     assert(lo < 1024); \
     assert(hi < 1024); \
     OP; \
@@ -163,7 +163,7 @@ case GateType::TYPE: { \
 }
 
 #define CASE_SINGLE(TYPE, OP) \
-case GateType::TYPE: { \
+case KernelGateType::TYPE: { \
     for (int task = 0; task < 4; task++) { \
         OP; \
         lo += add[task]; hi += add[task]; \
@@ -172,7 +172,7 @@ case GateType::TYPE: { \
 }
 
 #define CASE_LO_HI(TYPE, OP_LO, OP_HI) \
-case GateType::TYPE: { \
+case KernelGateType::TYPE: { \
     int m = 1 << SHARED_MEM_SIZE; \
     if (!isHighBlock){ \
         for (int j = threadIdx.x; j < m; j += blockSize) { \
@@ -187,7 +187,7 @@ case GateType::TYPE: { \
 }
 
 #define CASE_SKIPLO_HI(TYPE, OP_HI) \
-case GateType::TYPE: { \
+case KernelGateType::TYPE: { \
     if (!isHighBlock) continue; \
     int m = 1 << SHARED_MEM_SIZE; \
     for (int j = threadIdx.x; j < m; j += blockSize) { \
@@ -197,7 +197,7 @@ case GateType::TYPE: { \
 }
 
 #define LOHI_SAME(TYPE, OP) \
-case GateType::TYPE: { \
+case KernelGateType::TYPE: { \
     int m = 1 << SHARED_MEM_SIZE; \
     for (int j = threadIdx.x; j < m; j += blockSize) { \
         OP; \
@@ -206,7 +206,7 @@ case GateType::TYPE: { \
 }
 
 #define ID_BREAK() \
-case GateType::ID: { \
+case KernelGateType::ID: { \
     break; \
 }
 
@@ -217,13 +217,13 @@ __device__ void doCompute(int numGates, int* loArr, int* shiftAt) {
         int targetQubit = deviceGates[i].targetQubit;
         char controlIsGlobal = deviceGates[i].controlIsGlobal;
         char targetIsGlobal = deviceGates[i].targetIsGlobal;
-        if (deviceGates[i].type == GateType::CCX) {
+        if (deviceGates[i].type == KernelGateType::CCX) {
             int controlQubit2 = deviceGates[i].controlQubit2;
             int control2IsGlobal = deviceGates[i].control2IsGlobal;
             if (!control2IsGlobal) {
                 int m = 1 << (SHARED_MEM_SIZE - 1);
                 assert(!controlIsGlobal && !targetIsGlobal);
-                assert(deviceGates[i].type == GateType::CCX);
+                assert(deviceGates[i].type == KernelGateType::CCX);
                 int maskTarget = (1 << targetQubit) - 1;
                 for (int j = threadIdx.x; j < m; j += blockSize) {
                     int lo = ((j >> targetQubit) << (targetQubit + 1)) | (j & maskTarget);
@@ -265,12 +265,12 @@ __device__ void doCompute(int numGates, int* loArr, int* shiftAt) {
                     }
                 }
             } else {
-                assert(deviceGates[i].type == GateType::CZ || deviceGates[i].type == GateType::CU1 || deviceGates[i].type == GateType::CRZ);
+                assert(deviceGates[i].type == KernelGateType::CZ || deviceGates[i].type == KernelGateType::CU1 || deviceGates[i].type == KernelGateType::CRZ);
                 bool isHighBlock = (blockIdx.x >> targetQubit) & 1;
                 int m = 1 << (SHARED_MEM_SIZE - 1);
                 int maskControl = (1 << controlQubit) - 1;
                 if (!isHighBlock){
-                    if (deviceGates[i].type == GateType::CRZ) {
+                    if (deviceGates[i].type == KernelGateType::CRZ) {
                         for (int j = threadIdx.x; j < m; j += blockSize) {
                             int x = ((j >> controlQubit) << (controlQubit + 1)) | (j & maskControl)  | (1 << controlQubit);
                             x ^= x >> 3 & 7;
@@ -279,7 +279,7 @@ __device__ void doCompute(int numGates, int* loArr, int* shiftAt) {
                     }
                 } else {
                     switch (deviceGates[i].type) {
-                        case GateType::CZ: {
+                        case KernelGateType::CZ: {
                             for (int j = threadIdx.x; j < m; j += blockSize) {
                                 int x = ((j >> controlQubit) << (controlQubit + 1)) | (j & maskControl)  | (1 << controlQubit);
                                 x ^= x >> 3 & 7;
@@ -287,7 +287,7 @@ __device__ void doCompute(int numGates, int* loArr, int* shiftAt) {
                             }
                             break;    
                         }
-                        case GateType::CU1: {
+                        case KernelGateType::CU1: {
                             for (int j = threadIdx.x; j < m; j += blockSize) {
                                 int x = ((j >> controlQubit) << (controlQubit + 1)) | (j & maskControl)  | (1 << controlQubit);
                                 x ^= x >> 3 & 7;
@@ -295,7 +295,7 @@ __device__ void doCompute(int numGates, int* loArr, int* shiftAt) {
                             }
                             break;
                         }
-                        case GateType::CRZ: {
+                        case KernelGateType::CRZ: {
                             for (int j = threadIdx.x; j < m; j += blockSize) {
                                 int x = ((j >> controlQubit) << (controlQubit + 1)) | (j & maskControl)  | (1 << controlQubit);
                                 x ^= x >> 3 & 7;
@@ -396,6 +396,7 @@ __device__ void fetchData(qComplex* a, unsigned int* threadBias, unsigned int id
             }
         }
         blockBias = bias;
+        // printf("bias %ld\n", blockBias);
     }
     __syncthreads();
     unsigned int bias = blockBias | threadBias[threadIdx.x];
@@ -454,7 +455,6 @@ void initControlIdx(int n_devices, cudaStream_t* stream) {
         for (int i = 0; i < 128; i++)
             loIdx_host[q][q][i] = ((i >> q) << (q + 1)) | (i & ((1 << q) - 1));
 
-    int delta[10][10];
     for (int c = 0; c < 10; c++) {
         for (int t = 0; t < 10; t++) {
             if (c == t) continue;
@@ -488,16 +488,17 @@ void initControlIdx(int n_devices, cudaStream_t* stream) {
     loIdx_device.resize(n_devices);
     shiftAt_device.resize(n_devices);
     for (int g = 0; g < n_devices; g++) {
-        HANDLE_CUDA_ERROR(cudaMemcpyAsync(loIdx_device[g], loIdx_host[0][0], sizeof(loIdx_host), cudaMemcpyHostToDevice, stream[g]));
-        HANDLE_CUDA_ERROR(cudaMemcpyAsync(shiftAt_device[g], shiftAt_host[0], sizeof(shiftAt_host), cudaMemcpyHostToDevice, stream[g]));
+        cudaMemcpyAsync(loIdx_device[g], loIdx_host[0][0], sizeof(loIdx_host), cudaMemcpyHostToDevice, stream[g]);
+        cudaMemcpyAsync(shiftAt_device[g], shiftAt_host[0], sizeof(shiftAt_host), cudaMemcpyHostToDevice, stream[g]);
     }
 }
 
 void copyGatesToSymbol(KernelGate* hostGates, int numGates, cudaStream_t& stream, int gpuID) {
-    HANDLE_CUDA_ERROR(cudaMemcpyToSymbolAsync(deviceGates, hostGates + gpuID * numGates, sizeof(KernelGate) * numGates, 0, cudaMemcpyDefault, stream));
+    cudaMemcpyToSymbolAsync(deviceGates, hostGates + gpuID * numGates, sizeof(KernelGate) * numGates, 0, cudaMemcpyDefault, stream);
 }
 
 void ApplyGatesSHM(int gridDim, qComplex* deviceStateVec, unsigned int* threadBias, int numLocalQubits, int numGates, unsigned int blockHot, unsigned int enumerate, cudaStream_t& stream, int gpuID) {
+    printf("sv address %p\n", deviceStateVec);
     run<1<<THREAD_DEP><<<gridDim, 1<<THREAD_DEP, 0, stream>>>
         (deviceStateVec, threadBias, loIdx_device[gpuID], shiftAt_device[gpuID], numLocalQubits, numGates, blockHot, enumerate);
 }
